@@ -7,6 +7,8 @@ import os
 import sys
 
 from github import Github
+from github import GithubException
+from github import GithubObject
 from retrying import retry
 
 from . import templates_markdown
@@ -55,6 +57,8 @@ def main():
         include_issues=args.include_issues,
         include_closed_prs=args.include_closed_prs,
         include_closed_issues=args.include_closed_issues,
+        label=args.label,
+        since=args.since,
     )
 
 
@@ -112,6 +116,19 @@ def parse_args(args):
         action="store_false",
         dest="include_closed_issues",
     )
+    parser.add_argument(
+        "--label",
+        help='Label names.',
+        type=str,
+        nargs="*",
+        action="store",
+    )
+    parser.add_argument(
+        "--since",
+        help='Issues updated after the given time (timestamp in ISO 8601 format: YYYY-MM-DDTHH:MM:SSZ).',
+        type=datetime.datetime.fromisoformat,
+        action="store",
+    )
     return parser.parse_args()
 
 
@@ -125,6 +142,8 @@ def fetch_repo_and_export_to_markdown(
     include_closed_issues=True,
     include_prs=True,
     include_closed_prs=True,
+    label=[],
+    since=None,
 ):
     """
     Main logic (excluding parsing args + login)
@@ -141,6 +160,26 @@ def fetch_repo_and_export_to_markdown(
 
     repo = get_github_repo(gh, repo_string)
     logger.info("Retrieved repo: {}".format(repo.full_name))
+
+    # issue labels argument
+    if label is not None:
+        issue_labels = []
+        for l in label:
+            try:
+                issue_labels.append(repo.get_label(l))
+            except GithubException:
+                logger.warn(f"Github label ({l}) not found")
+        if issue_labels: # not empty
+            logger.info(f"Github labels: ({issue_labels})")
+    else:
+        issue_labels = GithubObject.NotSet
+
+    # since argument
+    if since is not None:
+        logger.info(f"Github issues since {since}")
+    else:
+        since = GithubObject.NotSet
+
     export_issues_to_markdown_file(
         repo=repo,
         output_path=output_path,
@@ -150,6 +189,8 @@ def fetch_repo_and_export_to_markdown(
         include_closed_issues=include_closed_issues,
         include_prs=include_prs,
         include_issues=include_issues,
+        labels=issue_labels,
+        since=since,
     )
     limit = gh.get_rate_limit()
     logger.info("Github API rate limit: {}".format(str(limit)))
@@ -165,6 +206,8 @@ def export_issues_to_markdown_file(
     include_closed_prs=True,
     include_issues=True,
     include_prs=True,
+    labels=GithubObject.NotSet,
+    since=GithubObject.NotSet,
 ):
     """
     Export one repo
@@ -179,7 +222,7 @@ def export_issues_to_markdown_file(
             # we're only including open issues.
             filter_state = "open"
         # TODO: A way to just pass filters as args into this function?
-        for issue in repo.get_issues(state=filter_state):
+        for issue in repo.get_issues(state=filter_state, labels=labels, since=since):
             # The Github API includes pull requests as "issues".
             try:
                 if issue.pull_request and not include_prs:
