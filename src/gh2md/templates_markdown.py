@@ -5,17 +5,15 @@ BASE = r"""Export of Github issues for [{repo_name}]({repo_url}).{datestring}
 
 ISSUE = r"""# [\#{number}]({url}) `{state}`: {title}
 {labels}
-#### <img src="{avatar_url}" width="50">[{author}]({author_url}) opened issue at [{date}]({url}):
+#### [{author}]({author_url}) opened issue at [{date}]({url}):
 
 {body}
 
 {comments}
-
-
--------------------------------------------------------------------------------
+<div style="page-break-after: always;"></div>
 """
 
-COMMENT = r"""#### <img src="{avatar_url}" width="50">[{author}]({author_url}) commented at [{date}]({url}):
+COMMENT = r"""#### [{author}]({author_url}) commented at [{date}]({url}):
 
 {body}
 """
