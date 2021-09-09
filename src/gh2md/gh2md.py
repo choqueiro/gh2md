@@ -304,7 +304,8 @@ def export_issues_to_markdown_file(
     return None
 
 
-@retry(stop_max_attempt_number=3, stop_max_delay=15000, wait_fixed=5000)
+# TODO include an option for repositories with thousands of issues (See github.GithubException.RateLimitExceededException)
+@retry(stop_max_delay=7200000, wait_exponential_multiplier=1000, wait_exponential_max=60000)
 def process_issue_to_markdown(issue):
     """
     Given a Github issue, return a formatted markdown block for the issue and
